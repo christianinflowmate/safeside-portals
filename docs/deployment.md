@@ -1,13 +1,24 @@
 # Deployment
 
-One container on [Fly.io](https://fly.io), running one Node process that serves
-both the API and the built web client. Postgres and file storage stay on
-Supabase, where they already are.
+One container, running one Node process that serves both the API and the built
+web client. Postgres and file storage stay on Supabase, where they already are.
 
-Nothing here was specified in the brief. Fly was chosen over Render because this
-process is not only a web server — it runs the extraction worker — and Render's
-free tier sleeps an idle service, which would stop a machine with files half
-read. See **Why the machine never sleeps** below.
+**Currently deployed on [Railway](https://railway.com).** Configuration for
+[Fly.io](https://fly.io) is also committed, and both run the same `Dockerfile` —
+the host is a config file, not a rebuild.
+
+Nothing here was specified in the brief. What ruled hosts out was architecture,
+not price: this process is not only a web server, it runs the extraction worker,
+so anything that sleeps an idle service or runs functions per-request cannot host
+it. That excludes Render's free tier and excludes Vercel and Netlify outright.
+See **Why the machine never sleeps** below.
+
+Railway came first for two practical reasons: its trial needs no card, and it
+bills actual usage rather than reserved capacity. This app idles at a few hundred
+megabytes and spikes only while Chromium renders, which those two models price
+very differently.
+
+---
 
 ## Why one service and not two
 
@@ -21,7 +32,95 @@ In development none of this applies: Vite serves the client on port 3000 and
 proxies `/api` to the API on 3001, `apps/web/dist` does not exist, and the
 static-serving block is skipped.
 
-## Before the first deploy
+## Railway
+
+### First deploy
+
+```bash
+npm install -g @railway/cli
+railway login
+```
+
+If the browser says it succeeded but the terminal keeps waiting, the localhost
+callback did not arrive. `railway login --browserless` prints a pairing code
+instead and does not depend on the redirect.
+
+```bash
+cd ~/safeside-proposals
+railway init --name safeside-proposals
+railway add --service safeside-proposals
+```
+
+Set the secrets. `--stdin` keeps values out of the process list, where anything
+on the machine could read them from `ps`:
+
+```bash
+printf '%s' '<value>' | railway variable set DATABASE_URL --stdin -s safeside-proposals
+```
+
+The five that matter: `DATABASE_URL`, `SUPABASE_URL`,
+`SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY`, `SESSION_SECRET`. Generate a
+**new** session secret for production rather than copying the local one:
+`openssl rand -base64 48`.
+
+The rest are not secret and go on the command line:
+
+```bash
+railway variable set -s safeside-proposals   NODE_ENV=production PORT=3001 EXTRACTION_PROVIDER=anthropic   ANTHROPIC_MODEL=claude-sonnet-5 SUPABASE_UPLOADS_BUCKET=sp-uploads   SUPABASE_DOCUMENTS_BUCKET=sp-documents SESSION_TTL_HOURS=12
+```
+
+`NODE_ENV=production` is not cosmetic — it turns on the secure-cookie flag and
+the startup guard described below.
+
+Then:
+
+```bash
+railway up --service safeside-proposals
+railway domain --service safeside-proposals --port 3001
+```
+
+### Migrations
+
+Railway has no release-command step in this configuration, so migrations are
+run explicitly rather than on deploy:
+
+```bash
+DATABASE_URL='<production URL>' node scripts/migrate.mjs --status   # what would run
+DATABASE_URL='<production URL>' node scripts/migrate.mjs            # apply
+```
+
+If production points at the Supabase project development already uses, the
+migrations are usually applied already. Check `--status` rather than assuming.
+
+### The same database
+
+`DATABASE_URL` currently points at the Supabase project the dev machine also
+uses. Deployed and local are therefore **one dataset** — same users, same
+proposals, same uploaded quotes. That is convenient and is worth being deliberate
+about: anything created while testing locally is visible in production, and
+deleting a proposal deletes it in both.
+
+### Day to day
+
+```bash
+railway up          # deploy the current working tree
+railway logs        # runtime logs
+railway logs --build
+railway status
+railway variable list -s safeside-proposals
+```
+
+### Note on config format
+
+`railway.json` is deprecated in favour of `.railway/railway.ts`, and keeps
+working until **2026-12-01**. `railway config migrate` converts it. Worth doing
+before that date rather than discovering it during an outage.
+
+---
+
+## Fly.io
+
+### Before the first deploy
 
 1. **Install the CLI and sign in.**
 
@@ -38,7 +137,7 @@ static-serving block is skipped.
    Take `DATABASE_URL`, `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` from the
    values already in `.env`.
 
-## First deploy
+### First deploy
 
 ```bash
 fly launch --no-deploy
@@ -75,6 +174,34 @@ fly deploy
 The deploy applies migrations first, in a temporary machine, via the
 `release_command` in `fly.toml`. If a migration fails the deploy aborts and the
 previous version keeps serving.
+
+### Why 2GB and swap
+
+Chromium renders every proposal **twice** — the second pass is what puts real
+page numbers in the table of contents — with ten bundled fonts loaded. At 512MB
+this does not fail cleanly; the browser is killed mid-document and the symptom
+is a generation that simply never finishes. The 512MB of swap absorbs the spike.
+
+If renders start failing after the document grows, raise `memory` in `fly.toml`
+before looking anywhere else.
+
+### Day to day
+
+```bash
+fly deploy            # deploy the current working tree
+fly logs              # live logs
+fly status            # machine state
+fly ssh console       # a shell in the running container
+fly secrets list      # secret NAMES only, never values
+fly apps restart safeside-proposals
+```
+
+Unlike Railway above, migrations run automatically on deploy via the
+`release_command` in `fly.toml`. To check what would run, without deploying:
+
+```bash
+DATABASE_URL='<the production URL>' node scripts/migrate.mjs --status
+```
 
 ## Create the login account
 
@@ -123,16 +250,6 @@ half-read, leaving them stuck in `running`.
 
 This is the main reason for the monthly cost. It is not an optimisation to undo.
 
-## Why 2GB and swap
-
-Chromium renders every proposal **twice** — the second pass is what puts real
-page numbers in the table of contents — with ten bundled fonts loaded. At 512MB
-this does not fail cleanly; the browser is killed mid-document and the symptom
-is a generation that simply never finishes. The 512MB of swap absorbs the spike.
-
-If renders start failing after the document grows, raise `memory` in `fly.toml`
-before looking anywhere else.
-
 ## Chromium in a container
 
 Two defaults do not hold in a container, and both flags are set from the image
@@ -162,24 +279,6 @@ uploads — and lose every proposal on the next restart. The fixture extractor i
 worse, because it returns plausible coverage data for a document nobody read.
 
 The failure shows up in `fly logs` naming exactly which values are missing.
-
-## Day to day
-
-```bash
-fly deploy            # deploy the current working tree
-fly logs              # live logs
-fly status            # machine state
-fly ssh console       # a shell in the running container
-fly secrets list      # secret NAMES only, never values
-fly apps restart safeside-proposals
-```
-
-Migrations run automatically on deploy. To check what would run, without
-deploying:
-
-```bash
-DATABASE_URL='<the production URL>' node scripts/migrate.mjs --status
-```
 
 ## What this does not cover
 
