@@ -1,0 +1,78 @@
+/*
+ * Design tokens for the generated proposal.
+ *
+ * Derived from the redesign .docx in the sample corpus, rather than from the
+ * brief, in the places they disagree. Counts below are occurrences in that
+ * document, which is why each value is what it is.
+ *
+ * CAVEAT: that .docx was later found to be an AI-generated mockup, not Safeside
+ * output — see docs/decisions.md. It implements the brief's design system, which
+ * is what these tokens encode, but its page geometry is not authoritative. The
+ * real template is a Word document in Cambria/Calibri/Arial.
+ *
+ * These govern the CLIENT-FACING document. The internal UI is deliberately plainer
+ * and does not need to match.
+ */
+
+:root {
+  /* --- Brand ---------------------------------------------------------- */
+
+  /* Headings, cover, section titles. Matches the brief. */
+  --navy: #262d40;
+  /* Darker navy used for small caps and table headers. */
+  --navy-deep: #2a2e3a;
+
+  /*
+   * Two golds, and they are not interchangeable.
+   *
+   * The brief names #CEA963 as "Gold". In the document that value appears 31
+   * times and every one is a BORDER colour — the hairline under a heading, the
+   * 3pt left accent bar on a callout. It is never used for type, and it should
+   * not be: against white it lands near 2:1 contrast, which fails WCAG for text
+   * at any size.
+   *
+   * Gold TYPE is #A8853F, used 81 times, always as a text colour, never as a
+   * fill. It reaches ~3.9:1 on white, which carries at heading sizes.
+   *
+   * Using --gold-rule for text is the most likely way to make the output look
+   * subtly wrong while still looking gold.
+   */
+  --gold-text: #a8853f;
+  --gold-rule: #cea963;
+
+  /* --- Neutrals ------------------------------------------------------- */
+
+  --ink: #3f4554;        /* body copy — the most-used colour in the document */
+  --ink-muted: #767c8a;  /* captions, labels, footnotes */
+  --rule: #e3e5ea;       /* neutral table borders and dividers */
+  --panel: #f7f8fa;      /* shaded table rows and callout backgrounds */
+  --paper: #ffffff;
+
+  /* --- Type ----------------------------------------------------------- */
+
+  /*
+   * Static weight files, bundled locally. Never loaded from the web at render
+   * time: a network fetch inside the PDF pipeline means output that differs
+   * between machines, or fails silently to a fallback face.
+   */
+  --font-display: 'Bricolage Grotesque', Georgia, serif;
+  --font-body: 'Hanken Grotesk', -apple-system, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  /* Observed in the redesign: 56pt cover, 21pt section heads, ~10pt body. */
+  --size-cover: 56pt;
+  --size-section: 21pt;
+  --size-body: 10pt;
+
+  /* --- Page ----------------------------------------------------------- */
+
+  /* US Letter with the redesign's own margins, converted from twips. */
+  --page-width: 8.5in;
+  --page-height: 11in;
+  --margin-top: 0.764in;   /* 1100 twips */
+  --margin-right: 0.9in;   /* 1296 twips */
+  --margin-bottom: 0.486in; /*  700 twips */
+  --margin-left: 0.9in;    /* 1296 twips */
+  --header-offset: 0.333in; /* 480 twips */
+  --footer-offset: 0.222in; /* 320 twips */
+}

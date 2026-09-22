@@ -1,0 +1,482 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{TITLE}}</title>
+
+<!--
+  The printable proposal.
+
+  This file is the SHELL: the print stylesheet and the four substitution points
+  below. The sheets themselves are built by apps/api/src/documents/template.ts,
+  which does plain string building rather than pulling in a templating engine —
+  the document has one shape and one consumer, so a dependency would buy nothing.
+
+  Substitution points, all filled by buildProposalHtml():
+    {{TITLE}}      document title (no client identifiers beyond the client name)
+    {{STYLES}}     tokens.css + fonts.css, inlined, with the .ttf files rewritten
+                   to base64 data: URIs. Inlined rather than linked so the render
+                   makes no file or network request at all — see render.ts.
+    {{PAGE_VARS}}  --content-width / --content-height, computed from the same
+                   margin numbers passed to Playwright's pdf(). The measuring pass
+                   reads them back, so the two can never drift.
+    {{SHEETS}}     the document body, one <section class="sheet"> per logical page.
+
+  LAYOUT SOURCE: the real 22-page "Safe Secure Done" template, measured from the
+  sample corpus. Do not take geometry or type sizes from the "*New Redesign*"
+  files — docs/decisions.md records that those are AI-generated mockups and voids
+  the page geometry derived from them.
+-->
+
+<style>
+{{STYLES}}
+</style>
+
+<style>
+/* ---------------------------------------------------------------------------
+ * Page geometry.
+ *
+ * tokens.css carries --margin-* values converted from the redesign .docx. The
+ * CORRECTION in docs/decisions.md voids that document as a geometry source, so
+ * the values below are measured off the real template instead and override the
+ * tokens of the same name. Everything else in tokens.css — the palette, the
+ * families — still applies.
+ *
+ * Measured from the real 22-page proposal (Letter, 612 x 792pt):
+ *   body text left edge          x = 30pt   -> 0.417in side margins
+ *   running header baseline      y = 758pt  -> 0.47in from the top
+ *   page title baseline          y = 700pt  -> content starts ~1.0in down
+ *   footer disclaimer baseline   y = 52pt   -> content ends ~0.85in up
+ * ------------------------------------------------------------------------- */
+:root {
+  --margin-top: 0.95in;
+  --margin-right: 0.45in;
+  --margin-bottom: 0.85in;
+  --margin-left: 0.45in;
+
+  /* Real template type sizes, also measured rather than taken from the mockup. */
+  --size-cover: 44pt;
+  --size-section: 18pt;
+  --size-subhead: 14pt;
+  --size-body: 12pt;
+  --size-small: 10pt;
+
+  --lead: 1.35;
+}
+
+{{PAGE_VARS}}
+
+@page {
+  size: Letter;
+  /*
+   * Kept in sync with the margin object passed to page.pdf(). Chromium's PDF
+   * export takes its margins from that object, not from here; this declaration
+   * is what makes Cmd-P from a browser produce the same page.
+   */
+  margin: var(--margin-top) var(--margin-right) var(--margin-bottom) var(--margin-left);
+}
+
+/* ---------------------------------------------------------------------------
+ * Base
+ * ------------------------------------------------------------------------- */
+html, body { margin: 0; padding: 0; }
+
+body {
+  /*
+   * Fixed to the print content width so that on-screen layout and print layout
+   * are the same layout. The measuring pass depends on this: it divides each
+   * sheet's rendered height by the content height to work out how many physical
+   * pages that sheet consumes.
+   */
+  width: var(--content-width);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: var(--size-body);
+  line-height: var(--lead);
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+p { margin: 0 0 0.62em; }
+p:last-child { margin-bottom: 0; }
+strong { font-weight: 600; }
+
+/* ---------------------------------------------------------------------------
+ * Sheets — one logical page each.
+ *
+ * `break-before: page` guarantees every sheet starts on a fresh physical page,
+ * which is what lets page numbers be derived by accumulation rather than by
+ * parsing the finished PDF. `min-height` makes the common case exactly one page;
+ * a sheet whose content overruns simply spills, and the measuring pass counts
+ * the spill instead of silently clipping it. Losing a limit off the bottom of a
+ * page is a far worse failure than an uneven page.
+ * ------------------------------------------------------------------------- */
+.sheet {
+  box-sizing: border-box;
+  min-height: var(--content-height);
+  break-before: page;
+  break-inside: auto;
+}
+.sheet:first-of-type { break-before: auto; }
+
+.sheet__title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--size-section);
+  line-height: 1.15;
+  color: var(--navy);
+  margin: 0 0 0.10in;
+  padding-bottom: 0.07in;
+  border-bottom: 1.25pt solid var(--gold-rule);
+}
+
+/* Centred 14pt block heading, as on the real premium and coverage pages. */
+.subhead {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--size-subhead);
+  color: var(--navy);
+  text-align: center;
+  margin: 0.24in 0 0.08in;
+}
+.sheet__title + .subhead { margin-top: 0.16in; }
+
+.lede { margin-bottom: 0.14in; }
+
+.note {
+  margin-top: 0.16in;
+  padding: 0.09in 0.12in;
+  background: var(--panel);
+  border-left: 3pt solid var(--gold-rule);
+}
+
+.muted { color: var(--ink-muted); }
+.small { font-size: var(--size-small); }
+
+/* ---------------------------------------------------------------------------
+ * Tables
+ * ------------------------------------------------------------------------- */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  break-inside: auto;
+}
+thead { display: table-header-group; }
+tr { break-inside: avoid; }
+
+th {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--size-subhead);
+  color: var(--navy);
+  text-align: center;
+  background: var(--panel);
+  border-bottom: 1.25pt solid var(--gold-rule);
+  padding: 0.055in 0.08in;
+}
+
+td {
+  font-size: var(--size-body);
+  padding: 0.045in 0.08in;
+  border-bottom: 0.5pt solid var(--rule);
+  vertical-align: top;
+}
+
+td.num, th.num { text-align: right; }
+td.mid, th.mid { text-align: center; }
+td.term { width: 34%; font-weight: 500; color: var(--navy-deep); }
+
+/* Figures are the one place the mono face is used. */
+.figure {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+/* The total row under the premium breakdown. */
+tr.total td {
+  border-top: 1.25pt solid var(--gold-rule);
+  border-bottom: none;
+  font-weight: 600;
+  color: var(--navy);
+  padding-top: 0.07in;
+}
+
+/* ---------------------------------------------------------------------------
+ * Cover
+ * ------------------------------------------------------------------------- */
+.cover {
+  box-sizing: border-box;
+  /*
+   * TODO(cover art): the real cover is a full-bleed photograph — sky, skyscrapers,
+   * the chrome Safeside shield — with the title in heavy white type over it. That
+   * image is not in the repo, so this is a navy placeholder. When the asset lands
+   * it also needs bleed handling: Chromium takes its page margins from the pdf()
+   * options and applies them to every page, so a true full-bleed cover means
+   * rendering the cover at margin 0 and padding the other sheets instead.
+   */
+  background:
+    radial-gradient(120% 90% at 78% 8%, #3b4569 0%, transparent 60%),
+    linear-gradient(160deg, #364062 0%, var(--navy) 46%, #1b2031 100%);
+  color: var(--paper);
+  min-height: var(--content-height);
+  padding: 0.55in 0.5in;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.cover__top { display: flex; justify-content: flex-end; }
+
+.cover__client {
+  text-align: right;
+  font-size: var(--size-body);
+  line-height: 1.45;
+  max-width: 3.4in;
+}
+.cover__client .name {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 15pt;
+  display: block;
+  margin-bottom: 0.04in;
+}
+.cover__client .meta { opacity: 0.82; }
+
+.cover__title {
+  font-family: 'Bricolage Display', var(--font-display);
+  font-weight: 400;
+  font-size: var(--size-cover);
+  line-height: 1.02;
+  letter-spacing: -0.015em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.cover__rule {
+  width: 1.5in;
+  height: 3pt;
+  background: var(--gold-rule);
+  margin: 0.22in 0 0.2in;
+}
+
+.cover__foot {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.3in;
+}
+.cover__brand {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 13pt;
+  letter-spacing: 0.02em;
+}
+.cover__tagline {
+  font-size: var(--size-small);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--gold-rule);
+  margin-top: 0.05in;
+}
+.cover__todo {
+  font-family: var(--font-mono);
+  font-size: 7.5pt;
+  line-height: 1.4;
+  text-align: right;
+  max-width: 2.9in;
+  color: var(--gold-rule);
+  opacity: 0.85;
+}
+
+/* ---------------------------------------------------------------------------
+ * Table of contents
+ * ------------------------------------------------------------------------- */
+.toc { margin-top: 0.1in; }
+
+.toc__row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.1in;
+  padding: 0.055in 0;
+  border-bottom: 0.5pt solid var(--rule);
+}
+.toc__n {
+  font-family: var(--font-mono);
+  font-size: var(--size-small);
+  color: var(--gold-text);
+  min-width: 0.34in;
+}
+.toc__label { flex: 1 1 auto; }
+.toc__page {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  /*
+   * Fixed width so the first (unnumbered) pass and the second (numbered) pass
+   * lay out identically. If this box could resize, injecting the real numbers
+   * could reflow the contents page and invalidate the numbers being injected.
+   */
+  min-width: 0.34in;
+  text-align: right;
+  color: var(--navy);
+}
+
+/* ---------------------------------------------------------------------------
+ * Named insured / definition blocks
+ * ------------------------------------------------------------------------- */
+.fields { margin-top: 0.12in; }
+.field { padding: 0.08in 0; border-bottom: 0.5pt solid var(--rule); }
+.field__label {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--size-small);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold-text);
+  margin-bottom: 0.02in;
+}
+.field__value { color: var(--navy-deep); white-space: pre-line; }
+
+/* ---------------------------------------------------------------------------
+ * Numbered standing clauses (Terms & Conditions, Minimum Earned, Disclaimer)
+ * ------------------------------------------------------------------------- */
+.clauses { margin: 0; padding: 0; list-style: none; counter-reset: clause; }
+.clauses > li {
+  counter-increment: clause;
+  position: relative;
+  padding: 0 0 0.09in 0.42in;
+  break-inside: avoid;
+}
+.clauses > li::before {
+  content: counter(clause, decimal-leading-zero);
+  position: absolute;
+  left: 0;
+  top: 0.01in;
+  font-family: var(--font-mono);
+  font-size: var(--size-small);
+  font-weight: 600;
+  color: var(--gold-text);
+}
+.clauses .h {
+  font-weight: 600;
+  color: var(--navy-deep);
+}
+
+/* Plain bulleted list, used for subjectivities and the forms schedule. */
+.ticks { margin: 0; padding: 0; list-style: none; }
+.ticks > li {
+  position: relative;
+  padding: 0.028in 0 0.028in 0.2in;
+  break-inside: avoid;
+}
+.ticks > li::before {
+  content: "";
+  position: absolute;
+  left: 0.03in;
+  top: 0.105in;
+  width: 3.2pt;
+  height: 3.2pt;
+  background: var(--gold-rule);
+}
+
+/* The forms / endorsements / exclusions schedule runs long — two columns. */
+.schedule { column-count: 2; column-gap: 0.3in; font-size: 10.5pt; }
+.schedule > li { padding-top: 0.022in; padding-bottom: 0.022in; }
+.schedule > li::before { top: 0.09in; }
+
+/* ---------------------------------------------------------------------------
+ * Signature blocks
+ * ------------------------------------------------------------------------- */
+.sign { margin-top: 0.3in; break-inside: avoid; }
+.sign__name {
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: var(--navy);
+  margin-bottom: 0.14in;
+}
+.sign__row { display: flex; gap: 0.35in; align-items: flex-end; }
+.sign__line { flex: 1 1 auto; border-bottom: 0.75pt solid var(--navy-deep); height: 0.3in; }
+.sign__line--date { flex: 0 0 1.7in; }
+.sign__caption {
+  font-size: var(--size-small);
+  color: var(--ink-muted);
+  margin-top: 0.04in;
+  display: flex;
+  gap: 0.35in;
+}
+.sign__caption span:first-child { flex: 1 1 auto; }
+.sign__caption span:last-child { flex: 0 0 1.7in; }
+
+/* A blank the signer fills in — the broker fee on the Regulation 194 page. */
+.blank {
+  display: inline-block;
+  min-width: 1.05in;
+  border-bottom: 0.75pt solid var(--navy-deep);
+}
+
+/* ---------------------------------------------------------------------------
+ * Placeholder blocks.
+ *
+ * Deliberately loud. These mark copy that is not in the repo and must not be
+ * guessed at: a proposal that ships with invented regulatory wording is worse
+ * than one that ships with an obvious gap.
+ * ------------------------------------------------------------------------- */
+.placeholder {
+  margin: 0.14in 0;
+  padding: 0.11in 0.13in;
+  border: 1pt dashed var(--gold-text);
+  background: var(--panel);
+  break-inside: avoid;
+}
+.placeholder__tag {
+  font-family: var(--font-mono);
+  font-size: 8.5pt;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gold-text);
+  margin-bottom: 0.04in;
+}
+.placeholder__body { font-size: 10.5pt; color: var(--ink-muted); }
+
+/* ---------------------------------------------------------------------------
+ * Back page
+ * ------------------------------------------------------------------------- */
+.backpage {
+  min-height: var(--content-height);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+.backpage__brand {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 20pt;
+  color: var(--navy);
+}
+.backpage__rule {
+  width: 1.1in;
+  height: 2.5pt;
+  background: var(--gold-rule);
+  margin: 0.16in 0 0.2in;
+}
+.backpage__contact { line-height: 1.7; color: var(--navy-deep); }
+.backpage__contact .k {
+  display: inline-block;
+  min-width: 0.85in;
+  text-align: right;
+  margin-right: 0.12in;
+  color: var(--ink-muted);
+  font-size: var(--size-small);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+</style>
+</head>
+<body>
+{{SHEETS}}
+</body>
+</html>

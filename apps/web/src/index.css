@@ -1,0 +1,111 @@
+@import 'tailwindcss';
+
+/*
+ * Design tokens, copied from templates/tokens.css.
+ *
+ * Those tokens govern the client-facing PDF. This internal tool borrows the
+ * palette so the two do not drift, but deliberately not the type: the bundled
+ * brand faces are for the generated document, and loading them here would buy
+ * nothing but weight.
+ */
+
+:root {
+  /* --- Brand ---------------------------------------------------------- */
+
+  /* Headings, cover, section titles. Matches the brief. */
+  --navy: #262d40;
+  /* Darker navy used for small caps and table headers. */
+  --navy-deep: #2a2e3a;
+
+  /*
+   * Two golds, and they are not interchangeable.
+   *
+   * --gold-rule (#CEA963) is a BORDER colour only — it lands near 2:1 on white
+   * and fails WCAG as type at any size. Gold TYPE is --gold-text (#A8853F).
+   * Using --gold-rule for text is the most likely way to make the output look
+   * subtly wrong while still looking gold.
+   */
+  --gold-text: #a8853f;
+  --gold-rule: #cea963;
+
+  /* --- Neutrals ------------------------------------------------------- */
+
+  --ink: #3f4554; /* body copy — the most-used colour in the document */
+  --ink-muted: #767c8a; /* captions, labels, footnotes */
+  --rule: #e3e5ea; /* neutral table borders and dividers */
+  --panel: #f7f8fa; /* shaded table rows and callout backgrounds */
+  --paper: #ffffff;
+
+  /* --- Type ----------------------------------------------------------- */
+
+  --font-display: 'Bricolage Grotesque', Georgia, serif;
+  --font-body: 'Hanken Grotesk', -apple-system, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  --size-cover: 56pt;
+  --size-section: 21pt;
+  --size-body: 10pt;
+
+  /* --- Page ----------------------------------------------------------- */
+
+  --page-width: 8.5in;
+  --page-height: 11in;
+  --margin-top: 0.764in; /* 1100 twips */
+  --margin-right: 0.9in; /* 1296 twips */
+  --margin-bottom: 0.486in; /*  700 twips */
+  --margin-left: 0.9in; /* 1296 twips */
+  --header-offset: 0.333in; /* 480 twips */
+  --footer-offset: 0.222in; /* 320 twips */
+}
+
+/*
+ * The same values again, as Tailwind theme colours so `bg-navy` / `text-ink` /
+ * `border-rule` exist. Tailwind v4 resolves @theme at build time and will not
+ * follow a var(), so these are literals rather than references to the block
+ * above. Change one, change both.
+ */
+@theme {
+  --color-navy: #262d40;
+  --color-navy-deep: #2a2e3a;
+  --color-gold-text: #a8853f;
+  --color-gold-rule: #cea963;
+  --color-ink: #3f4554;
+  --color-ink-muted: #767c8a;
+  --color-rule: #e3e5ea;
+  --color-panel: #f7f8fa;
+  --color-paper: #ffffff;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--panel);
+    color: var(--ink);
+    font-family:
+      -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
+      sans-serif;
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  /* An internal tool at 1280px and up; no mobile breakpoint work. */
+  #root {
+    min-width: 1100px;
+  }
+
+  h1,
+  h2,
+  h3 {
+    color: var(--navy);
+    font-weight: 600;
+  }
+
+  *:focus-visible {
+    outline: 2px solid var(--navy);
+    outline-offset: 1px;
+  }
+}

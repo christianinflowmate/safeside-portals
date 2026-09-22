@@ -1,0 +1,41 @@
+node_modules/
+dist/
+build/
+.vite/
+*.tsbuildinfo
+
+# Secrets — never commit. Key names live in .env.example, values in 1Password.
+.env
+.env.*
+!.env.example
+
+# Real client data must never enter this repo. See docs/confidentiality.md.
+samples/
+*.sample.pdf
+fixtures/real/
+
+# Generated output
+apps/api/tmp/
+out/
+*.generated.pdf
+
+.DS_Store
+*.log
+npm-debug.log*
+coverage/
+.idea/
+.vscode/
+
+# Python venv for the font build step
+.venv/
+# Variable-font masters, re-fetched by scripts/build-fonts.py
+.font-cache/
+
+# Transient render scratch files
+templates/.render-*.html
+
+# Local PGlite database. Holds extracted client data — must never be committed.
+apps/api/.pglite/
+.pglite/
+# Local filesystem storage fallback (uploaded quotes).
+.storage/
