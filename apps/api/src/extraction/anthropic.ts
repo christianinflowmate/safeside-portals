@@ -90,11 +90,31 @@ export class AnthropicExtractionProvider implements ExtractionProvider {
       });
     } catch (err) {
       const status = (err as { status?: number })?.status;
-      // 429 and 5xx are worth another attempt; 400 means this document will never
-      // parse and retrying just burns tokens.
-      const retryable = status === 429 || (status !== undefined && status >= 500);
+      const cause = err instanceof Error ? err.message : String(err);
+
+      /*
+       * 429 and 5xx are worth another attempt; 400 means this document will
+       * never parse and retrying just burns tokens.
+       *
+       * No status at all is a TRANSPORT failure — a dropped socket, a DNS blip,
+       * a timeout — and it is the most retryable kind there is. This used to
+       * require a status to retry, so a connection that died mid-request was
+       * treated exactly like a malformed document: one attempt, then failed, out
+       * of an allowed three. A broker saw a quote refuse to read and re-uploading
+       * it worked.
+       */
+      const retryable = status === undefined || status === 429 || status >= 500;
+
+      /*
+       * Say what went wrong in the message itself. This string is what lands in
+       * sp_files.error_text and what the analyzing screen shows, and
+       * "Anthropic request failed for <file>" told nobody anything — not the
+       * status, not the reason, not whether trying again was worth it.
+       */
       throw new ExtractionError(
-        `Anthropic request failed for ${filename}`,
+        `Anthropic request failed for ${filename}` +
+          `${status !== undefined ? ` (HTTP ${status})` : ' (no response — network or timeout)'}` +
+          `: ${cause}`,
         err,
         retryable,
       );
