@@ -1,0 +1,35 @@
+# What must never be uploaded to the build service.
+#
+# `railway up` tarballs this directory. .gitignore already covers most of it,
+# but secrets and client data are not something to leave to a default.
+
+.env
+.env.*
+!.env.example
+
+# Real client data. See docs/confidentiality.md.
+samples/
+*.sample.pdf
+fixtures/real/
+
+# Local databases and uploaded quotes — both hold extracted client data.
+.pglite/
+apps/api/.pglite/
+.storage/
+
+node_modules/
+**/node_modules/
+dist/
+apps/web/dist/
+build/
+.vite/
+out/
+coverage/
+*.tsbuildinfo
+*.generated.pdf
+templates/.render-*.html
+.git/
+.venv/
+.font-cache/
+.DS_Store
+*.log
