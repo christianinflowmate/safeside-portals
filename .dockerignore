@@ -1,0 +1,50 @@
+# What must never enter a build context, let alone an image.
+#
+# A .dockerignore miss is quieter than a .gitignore miss: nothing is published,
+# so nothing is reviewed, and the secret simply sits in a layer. The first three
+# blocks are the ones that matter.
+
+# Secrets. The container gets its configuration from Fly secrets, never a file.
+.env
+.env.*
+!.env.example
+
+# Real client data. See docs/confidentiality.md.
+samples/
+*.sample.pdf
+fixtures/real/
+
+# Local databases and uploaded quotes — both hold extracted client data.
+.pglite/
+apps/api/.pglite/
+.storage/
+
+# Installed per-platform inside the image; a macOS node_modules copied into a
+# Linux image gives you native modules that cannot load.
+node_modules/
+**/node_modules/
+
+# Build output — the image builds its own.
+dist/
+build/
+.vite/
+apps/web/dist/
+out/
+*.generated.pdf
+coverage/
+*.tsbuildinfo
+
+# Transient render scratch files.
+templates/.render-*.html
+
+# Not needed at runtime.
+.git/
+.github/
+.venv/
+.font-cache/
+docs/
+*.md
+.DS_Store
+*.log
+.idea/
+.vscode/

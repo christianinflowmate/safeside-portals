@@ -45,7 +45,24 @@ export async function renderProposalPdf(
   assertNoCarrierLeaks(model, { carrierNames });
 
   const { chromium } = await import('playwright');
-  const browser = await chromium.launch({ args: ['--font-render-hinting=none'] });
+  /*
+   * In a container, two of Chromium's defaults do not hold.
+   *
+   * Its sandbox needs kernel privileges a Fly machine does not grant, and /dev/shm
+   * is a few megabytes there, which a rendering browser exhausts and then crashes
+   * mid-document. Both flags are therefore set from the image and nowhere else —
+   * on a laptop the sandbox stays on.
+   *
+   * Turning the sandbox off is acceptable here and would not be for a browser
+   * pointed at the web: this process runs unprivileged, and the only page it ever
+   * opens is a local file it just wrote itself.
+   */
+  const containerArgs = process.env.CHROMIUM_NO_SANDBOX === '1'
+    ? ['--no-sandbox', '--disable-dev-shm-usage']
+    : [];
+  const browser = await chromium.launch({
+    args: ['--font-render-hinting=none', ...containerArgs],
+  });
   let scratch: string | undefined;
 
   try {

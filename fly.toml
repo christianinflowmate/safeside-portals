@@ -1,0 +1,71 @@
+# Fly.io configuration.
+#
+# Deploy:  fly deploy
+# Logs:    fly logs
+# Shell:   fly ssh console
+#
+# Secrets are NOT in this file and never should be. See docs/deployment.md.
+
+app = 'safeside-proposals'
+primary_region = 'sea'
+
+[build]
+  dockerfile = 'Dockerfile'
+
+# Migrations run once per deploy, in a temporary machine, before any new
+# instance takes traffic. Doing this here rather than at process start is what
+# stops two booting instances racing each other through the same migration.
+# A non-zero exit aborts the deploy and the old version keeps serving.
+[deploy]
+  release_command = 'npm run db:migrate'
+  strategy = 'immediate'
+
+[env]
+  NODE_ENV = 'production'
+  PORT = '3001'
+  EXTRACTION_PROVIDER = 'anthropic'
+  ANTHROPIC_MODEL = 'claude-sonnet-5'
+  SUPABASE_UPLOADS_BUCKET = 'sp-uploads'
+  SUPABASE_DOCUMENTS_BUCKET = 'sp-documents'
+  SESSION_TTL_HOURS = '12'
+
+[http_service]
+  internal_port = 3001
+  force_https = true
+
+  # The machine must stay up.
+  #
+  # This process is not only a web server — it runs the extraction worker, which
+  # polls for queued files and spends about a minute on each one. Fly stops an
+  # idle machine based on HTTP traffic, and a broker who starts an upload and
+  # switches tabs generates no traffic at all. The machine would stop with files
+  # half-read and leave them stuck in 'running'.
+  auto_stop_machines = 'off'
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [http_service.concurrency]
+    type = 'requests'
+    # Rendering a proposal occupies Chromium and a good deal of memory. Keeping
+    # the ceiling low means a second request queues rather than both failing.
+    soft_limit = 20
+    hard_limit = 40
+
+[[http_service.checks]]
+  grace_period = '20s'
+  interval = '30s'
+  method = 'GET'
+  path = '/api/health'
+  timeout = '5s'
+
+[[vm]]
+  size = 'shared-cpu-1x'
+  # Chromium is the reason for 2GB. It renders each proposal twice — the second
+  # pass is what puts real page numbers in the table of contents — with ten
+  # bundled fonts loaded. 512MB is not enough and fails as a killed render
+  # rather than as an obvious out-of-memory error.
+  memory = '2gb'
+
+# Chromium spikes hard and briefly. Swap absorbs the peak instead of the kernel
+# killing the browser mid-document.
+swap_size_mb = 512

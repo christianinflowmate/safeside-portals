@@ -3,19 +3,23 @@
 For brokers. Everything below is done in the browser; nothing is typed at a
 command line.
 
-## Starting it up
+## Opening it
 
-The tool runs on one machine — the dev machine — and is not yet on a server, so
-it has to be started before it can be opened.
+Once deployed, it is a URL — open it and sign in. Nothing to start, nothing to
+leave running. The address is whatever `fly deploy` printed; see
+`docs/deployment.md`.
+
+### Running it locally instead
+
+Only needed for development, or before the first deploy:
 
 ```bash
 cd ~/safeside-proposals && npm run dev
 ```
 
 Two things start: the API on port 3001 and the web app on **port 3000**. Open
-<http://localhost:3000> once both have printed their startup lines.
-
-Leave that terminal open. Closing it stops the tool.
+<http://localhost:3000> once both have printed their startup lines. Leave that
+terminal open — closing it stops the tool.
 
 ## Signing in
 
@@ -133,7 +137,8 @@ Already in our own words: general liability, property, workers comp, disability
 
 ## Known limits
 
-- One machine. Nobody else can open it yet.
+- One account. Everything belongs to whoever is signed in; there is no shared
+  view and no second login until someone makes one.
 - No account management screen — adding a colleague or changing a password is a
   script an admin runs.
 - The layout expects a desktop-width window.
