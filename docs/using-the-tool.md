@@ -30,6 +30,10 @@ password" link — if you are locked out, someone with access runs
 A wrong password says so and nothing else. It never hints whether the email
 exists.
 
+**To change your own password**, click your name in the top right. You need your
+current one. Changing it signs out every other browser you are signed in on,
+which is the point of changing it.
+
 ## 1. Start a proposal
 
 **New Proposal**, then add the carrier quotes for **one client**. Several at
@@ -51,7 +55,15 @@ One file at a time, roughly a minute each, with a progress list showing which is
 being read. You can leave the page and come back.
 
 If a file cannot be read, it stops there and asks you what to do rather than
-carrying on quietly: drop that file and continue with the rest, or start again.
+carrying on quietly. You get three choices:
+
+- **Try again.** Most failures have nothing to do with the document — a dropped
+  connection, a timeout, an account out of credit. If the reason looks temporary,
+  this puts the file back in the queue. Only offered before you have gone through
+  to review: once a draft exists, a file read afterwards could not be added to it
+  without putting your edits at risk, so it says no rather than appearing to work.
+- **Remove and continue** with the rest.
+- **Start over** with different documents.
 
 Uploaded quotes are never modified, renamed or overwritten.
 
@@ -135,10 +147,19 @@ liability, professional liability, umbrella.
 Already in our own words: general liability, property, workers comp, disability
 / PFL.
 
+## Deleting a proposal
+
+**Delete** at the end of a row on the proposal list. It asks first, in the row.
+
+It cannot be undone, and it takes the uploaded quotes and everything read out of
+them with it. The original files on your own machine are untouched — the tool has
+never modified them.
+
 ## Known limits
 
 - One account. Everything belongs to whoever is signed in; there is no shared
   view and no second login until someone makes one.
-- No account management screen — adding a colleague or changing a password is a
-  script an admin runs.
+- No account management screen — adding a colleague is a script an admin runs.
+  You can change your own password from your name in the top right; you cannot
+  add, remove or disable anyone.
 - The layout expects a desktop-width window.
