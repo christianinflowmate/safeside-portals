@@ -27,6 +27,15 @@ export function AnalyzingScreen() {
   const [acting, setActing] = useState(false);
   /* True once extraction has settled with failures and polling has stopped. */
   const [holding, setHolding] = useState(false);
+  /*
+   * Bumped to start the polling effect again.
+   *
+   * The effect stops its own timer once everything has settled, and `holding` is
+   * not one of its dependencies — so clearing that flag changes the wording on
+   * screen and nothing else. Putting a file back on the queue has to restart the
+   * loop itself, or the retry looks like it did nothing at all.
+   */
+  const [resumeKey, setResumeKey] = useState(0);
 
   const poll = useCallback(
     async (signal?: AbortSignal) => {
@@ -73,7 +82,32 @@ export function AnalyzingScreen() {
       controller.abort();
       if (timer) clearTimeout(timer);
     };
-  }, [id, poll, navigate]);
+  }, [id, poll, navigate, resumeKey]);
+
+  /*
+   * Read a file again.
+   *
+   * Most failures are not the document's fault — an API account out of credit, a
+   * dropped connection, a timeout. Before this the only ways past one were to
+   * drop the file or re-upload everything, so a few minutes of API trouble cost
+   * a whole proposal.
+   *
+   * Polling resumes, because the file goes back on the queue and the screen must
+   * start following it again rather than sitting on the last failure.
+   */
+  async function retryFile(fileId: string) {
+    setActing(true);
+    setError(null);
+    try {
+      await api.retryFile(id, fileId);
+      setHolding(false);
+      setResumeKey((n) => n + 1);
+    } catch (cause) {
+      setError(cause);
+    } finally {
+      setActing(false);
+    }
+  }
 
   async function removeFile(fileId: string) {
     setActing(true);
@@ -204,7 +238,7 @@ export function AnalyzingScreen() {
         <Card className="mt-5 max-w-3xl border-red-200">
           <CardHeader
             title={`${failedFiles.length} file${failedFiles.length === 1 ? '' : 's'} could not be read`}
-            subtitle="Drop the file and carry on with the rest, or start again with different documents."
+            subtitle="Try it again if the reason looks temporary. Otherwise drop the file and carry on with the rest."
           />
           <CardBody className="flex flex-col gap-3">
             {failedFiles.map((file) => (
@@ -220,14 +254,19 @@ export function AnalyzingScreen() {
                     {file.error_text ?? 'The extractor gave no reason.'}
                   </p>
                 </div>
-                <Button
-                  size="sm"
-                  disabled={acting}
-                  onClick={() => void removeFile(file.id)}
-                  className="shrink-0"
-                >
-                  Remove and continue
-                </Button>
+                <div className="flex shrink-0 items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    disabled={acting}
+                    onClick={() => void retryFile(file.id)}
+                  >
+                    Try again
+                  </Button>
+                  <Button size="sm" disabled={acting} onClick={() => void removeFile(file.id)}>
+                    Remove and continue
+                  </Button>
+                </div>
               </div>
             ))}
 

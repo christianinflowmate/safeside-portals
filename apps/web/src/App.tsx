@@ -3,6 +3,7 @@ import { AuthProvider } from './auth/AuthContext.tsx';
 import { AppShell, RequireAuth } from './components/AppShell.tsx';
 import { LoginScreen } from './screens/Login.tsx';
 import { ProposalsListScreen } from './screens/ProposalsList.tsx';
+import { AccountScreen } from './screens/Account.tsx';
 import { UploadScreen } from './screens/Upload.tsx';
 import { AnalyzingScreen } from './screens/Analyzing.tsx';
 import { ReviewScreen } from './screens/review/ReviewScreen.tsx';
@@ -17,6 +18,7 @@ export function App() {
           <Route element={<RequireAuth />}>
             <Route element={<AppShell />}>
               <Route path="/" element={<ProposalsListScreen />} />
+              <Route path="/account" element={<AccountScreen />} />
               <Route path="/proposals/new" element={<UploadScreen />} />
               <Route path="/proposals/:id/analyzing" element={<AnalyzingScreen />} />
               <Route path="/proposals/:id/review" element={<ReviewScreen />} />

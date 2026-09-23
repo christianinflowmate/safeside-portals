@@ -28,7 +28,15 @@ export function AppShell() {
             <span className="text-sm text-ink-muted">Proposals</span>
           </Link>
           <div className="flex items-center gap-3 text-xs text-ink-muted">
-            {user ? <span>{user.display_name || user.email}</span> : null}
+            {user ? (
+              <Link
+                to="/account"
+                className="rounded px-1.5 py-0.5 hover:bg-panel hover:text-navy"
+                title="Account and password"
+              >
+                {user.display_name || user.email}
+              </Link>
+            ) : null}
             <Button size="sm" variant="ghost" onClick={() => void signOut()}>
               Sign out
             </Button>

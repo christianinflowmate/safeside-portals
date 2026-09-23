@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { ProposalListItem } from '@safeside/shared';
 import { PageHeader } from '../components/AppShell.tsx';
@@ -23,6 +24,33 @@ export function ProposalsListScreen() {
     [],
   );
 
+  /*
+   * Deleting asks first, in the row itself.
+   *
+   * A proposal holds a client's quotes and everything read out of them, and this
+   * cannot be undone. A single click next to a link people click all day is the
+   * wrong shape for that, and a browser confirm() dialog is easy to dismiss
+   * without reading. Turning the row into the question is harder to do by
+   * accident.
+   */
+  const [confirming, setConfirming] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  async function remove(id: string) {
+    setDeleting(id);
+    setDeleteError(null);
+    try {
+      await api.deleteProposal(id);
+      setConfirming(null);
+      reload();
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : 'That proposal could not be deleted.');
+    } finally {
+      setDeleting(null);
+    }
+  }
+
   return (
     <>
       <PageHeader
@@ -36,6 +64,11 @@ export function ProposalsListScreen() {
       />
 
       {error ? <ErrorState error={error} onRetry={reload} className="mb-4" /> : null}
+      {deleteError ? (
+        <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          {deleteError}
+        </div>
+      ) : null}
 
       <Card>
         {loading || !data ? (
@@ -63,6 +96,7 @@ export function ProposalsListScreen() {
                 <th className="px-5 py-2 font-semibold">Status</th>
                 <th className="px-5 py-2 font-semibold">Files</th>
                 <th className="px-5 py-2 text-right font-semibold">Document</th>
+                <th className="px-5 py-2 text-right font-semibold" aria-label="Actions" />
               </tr>
             </thead>
             <tbody>
@@ -101,6 +135,38 @@ export function ProposalsListScreen() {
                       </Link>
                     ) : (
                       <span className="text-ink-muted">—</span>
+                    )}
+                  </td>
+                  <td className="px-5 py-2.5 text-right whitespace-nowrap">
+                    {confirming === item.id ? (
+                      <span className="inline-flex items-center gap-2">
+                        <span className="text-xs text-ink-muted">Delete for good?</span>
+                        <button
+                          type="button"
+                          disabled={deleting === item.id}
+                          onClick={() => void remove(item.id)}
+                          className="rounded border border-red-300 px-2 py-0.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+                        >
+                          {deleting === item.id ? 'Deleting…' : 'Delete'}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={deleting === item.id}
+                          onClick={() => setConfirming(null)}
+                          className="rounded px-2 py-0.5 text-xs text-ink-muted hover:bg-panel disabled:opacity-50"
+                        >
+                          Cancel
+                        </button>
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        aria-label={`Delete ${item.client_name || 'Untitled client'}`}
+                        onClick={() => { setDeleteError(null); setConfirming(item.id); }}
+                        className="rounded px-2 py-0.5 text-xs text-ink-muted hover:bg-red-50 hover:text-red-700"
+                      >
+                        Delete
+                      </button>
                     )}
                   </td>
                 </tr>

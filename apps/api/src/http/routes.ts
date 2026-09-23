@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import multer from 'multer';
-import { hashToken, createSession, destroySession, cookieOptions, SESSION_COOKIE } from '../auth/sessions.ts';
-import { verifyPassword } from '../auth/passwords.ts';
+import { hashToken, createSession, destroySession, destroyAllSessions, cookieOptions, SESSION_COOKIE } from '../auth/sessions.ts';
+import { verifyPassword, hashPassword } from '../auth/passwords.ts';
 import { checkLoginRateLimit, recordLoginAttempt } from '../auth/rate-limit.ts';
 import {
   getOwnedProposal, assertOwnsProposal, listOwnedProposals, getOwnedFile,
@@ -9,6 +9,7 @@ import {
 } from '../db/scoped.ts';
 import { loadProposalDetail } from '../proposals/detail.ts';
 import { materializeProposal } from '../proposals/materialize.ts';
+import { whyRetryRefused } from '../proposals/retry.ts';
 import { enqueue } from '../jobs/queue.ts';
 import { uploadPath, documentPath, sha256, UPLOADS_BUCKET, DOCUMENTS_BUCKET } from '../storage/index.ts';
 import { handler, requireUser, currentUser, ValidationError, param } from './middleware.ts';
@@ -80,6 +81,63 @@ export function createRouter(): Router {
     });
     res.cookie(SESSION_COOKIE, token, cookieOptions(expiresAt));
     res.json({ id: user.id, email: user.email, display_name: user.display_name, is_admin: user.is_admin });
+  }));
+
+  /**
+   * Change your own password.
+   *
+   * Until this existed the only way to change one was an admin running
+   * scripts/set-password.mjs at a terminal, which makes every rotation someone
+   * else's errand and is why passwords do not get rotated.
+   *
+   * The current password is required. A session cookie proves the browser was
+   * once signed in; it does not prove the person at the keyboard now is the
+   * owner, and an unattended laptop should not be enough to lock someone out of
+   * their own account.
+   */
+  r.post('/auth/password', requireUser(), handler(async (req, res) => {
+    const { current_password: currentPassword, new_password: newPassword } = req.body ?? {};
+    if (typeof currentPassword !== 'string' || typeof newPassword !== 'string') {
+      throw new ValidationError(['The current and new passwords are both required.']);
+    }
+    if (newPassword.length < 12) {
+      throw new ValidationError(['The new password must be at least 12 characters.']);
+    }
+    if (newPassword === currentPassword) {
+      throw new ValidationError(['The new password is the same as the current one.']);
+    }
+
+    const user = currentUser(req);
+    const { rows } = await req.ctx.db.query<{ password_hash: string }>(
+      `select password_hash from sp_users where id = $1`,
+      [user.id],
+    );
+    if (!rows[0] || !(await verifyPassword(rows[0].password_hash, currentPassword))) {
+      // Deliberately the same shape as a failed sign-in.
+      res.status(401).json({ error: 'That is not your current password.' });
+      return;
+    }
+
+    await req.ctx.db.query(`update sp_users set password_hash = $2 where id = $1`, [
+      user.id,
+      await hashPassword(newPassword),
+    ]);
+
+    /*
+     * Every other session is ended.
+     *
+     * Someone changing a password because they believe it is known to somebody
+     * else has not achieved anything if that somebody else stays signed in. The
+     * browser doing the changing keeps its session, so the person does not log
+     * themselves out mid-task.
+     */
+    await destroyAllSessions(req.ctx.db, user.id);
+    const { token, expiresAt } = await createSession(req.ctx.db, user.id, {
+      userAgent: req.get('user-agent') ?? null,
+      ip: req.ip ?? null,
+    });
+    res.cookie(SESSION_COOKIE, token, cookieOptions(expiresAt));
+    res.status(204).end();
   }));
 
   r.post('/auth/logout', handler(async (req, res) => {
@@ -201,6 +259,44 @@ export function createRouter(): Router {
     // request the broker cannot retry is not.
     await req.ctx.storage.remove(UPLOADS_BUCKET, file.storage_path as string).catch(() => {});
     res.status(204).end();
+  }));
+
+  /**
+   * Read a file again after it failed.
+   *
+   * A failure is often nothing to do with the document: an API account out of
+   * credit, a dropped connection, a timeout. Before this, the only way past one
+   * was to drop the file or start the proposal again and re-upload everything,
+   * which made an outage lasting minutes cost a full re-run.
+   *
+   * Refused once the proposal has a draft, and that refusal is the point rather
+   * than a limitation to route around. materializeProposal will not touch a
+   * proposal that already has lines — that is what stops a re-extraction wiping
+   * out a broker's edits — so a file read at this stage would succeed, be stored,
+   * and never appear in the proposal. Silently doing nothing is worse than
+   * saying no.
+   */
+  r.post('/proposals/:id/files/:fileId/retry', handler(async (req, res) => {
+    const userId = currentUser(req).id;
+    const proposalId = param(req, 'id');
+    const file = await getOwnedFile(req.ctx.db, userId, param(req, 'fileId'));
+
+    if (file.proposal_id !== proposalId) throw new NotFoundError('File not found');
+
+    const { rows } = await req.ctx.db.query<{ n: number }>(
+      `select count(*)::int as n from sp_lines where proposal_id = $1`,
+      [proposalId],
+    );
+    const refused = whyRetryRefused(file as { extraction_status: string }, rows[0].n);
+    if (refused) throw new ValidationError([refused]);
+
+    await req.ctx.db.query(
+      `update sp_files set extraction_status = 'pending', error_text = null where id = $1`,
+      [file.id],
+    );
+    await enqueue(req.ctx.db, 'extract_file', { file_id: file.id });
+
+    res.status(202).json({ id: file.id, extraction_status: 'pending' });
   }));
 
   r.get('/proposals/:id/status', handler(async (req, res) => {

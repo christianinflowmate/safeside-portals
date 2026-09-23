@@ -137,6 +137,18 @@ export const api = {
 
   logout: () => request<void>('/api/auth/logout', { method: 'POST', silentOn401: true }),
 
+  /**
+   * silentOn401 because a wrong current password is an answer to show on the
+   * form, not a sign the session expired — without it the app would bounce to
+   * the sign-in screen on a typo.
+   */
+  changePassword: (currentPassword: string, newPassword: string) =>
+    request<void>('/api/auth/password', {
+      method: 'POST',
+      body: { current_password: currentPassword, new_password: newPassword },
+      silentOn401: true,
+    }),
+
   /* --- Proposals --------------------------------------------------------- */
 
   listProposals: (signal?: AbortSignal) =>
@@ -147,6 +159,9 @@ export const api = {
       method: 'POST',
       body: { client_name: clientName },
     }),
+
+  deleteProposal: (id: string) =>
+    request<void>(`/api/proposals/${id}`, { method: 'DELETE' }),
 
   getProposal: (id: string, signal?: AbortSignal) =>
     request<ProposalDetail>(`/api/proposals/${id}`, { signal }),
@@ -179,6 +194,9 @@ export const api = {
 
   deleteFile: (id: string, fileId: string) =>
     request<void>(`/api/proposals/${id}/files/${fileId}`, { method: 'DELETE' }),
+
+  retryFile: (id: string, fileId: string) =>
+    request<{ id: string }>(`/api/proposals/${id}/files/${fileId}/retry`, { method: 'POST' }),
 
   /* --- Review ------------------------------------------------------------ */
 
