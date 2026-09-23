@@ -6,6 +6,7 @@ import {
   type ProposalFile, type ReviewDisclaimer, type LineSchedules, type Premise,
   addMoney, sumBy, centsApart, roundMoney,
 } from '@safeside/shared';
+import { summarise } from '../extraction/cost.ts';
 import type { Db } from '../db/index.ts';
 import { getOwnedProposal } from '../db/scoped.ts';
 
@@ -295,6 +296,16 @@ export async function loadProposalDetail(
     combined: sumBy(included, (l) => l.combined_price),
   };
 
+  /*
+   * Every run counts, including failures: a failed extraction is billed for the
+   * tokens it consumed before it failed, and hiding those would understate what
+   * a difficult proposal actually cost.
+   */
+  const usageRows = await db.query<{ input_tokens: number | null; output_tokens: number | null }>(
+    `select input_tokens, output_tokens from sp_extractions where proposal_id = $1`,
+    [proposalId],
+  );
+
   return {
     id: proposal.id,
     client_name: proposal.client_name,
@@ -312,6 +323,7 @@ export async function loadProposalDetail(
     files,
     notes,
     carrier_names: [...carrierNames],
+    usage: summarise(usageRows.rows),
     totals,
     blocking_reasons: blockingReasons(lines, customer, files),
   };

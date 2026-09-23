@@ -92,13 +92,47 @@ DATABASE_URL='<production URL>' node scripts/migrate.mjs            # apply
 If production points at the Supabase project development already uses, the
 migrations are usually applied already. Check `--status` rather than assuming.
 
-### The same database
+### Development does not touch production
 
-`DATABASE_URL` currently points at the Supabase project the dev machine also
-uses. Deployed and local are therefore **one dataset** — same users, same
-proposals, same uploaded quotes. That is convenient and is worth being deliberate
-about: anything created while testing locally is visible in production, and
-deleting a proposal deletes it in both.
+Two environment files, and the split is deliberate.
+
+`.env` holds no credentials. With Supabase and Anthropic unset the app falls back
+to PGlite under `apps/api/.pglite`, a file store under `.storage`, and the
+fixture extractor — so `npm run dev` reaches nothing real and costs nothing.
+
+`.env.production` holds the real values and is only ever passed explicitly:
+
+```bash
+npm run db:status:prod        # what migrations would run
+npm run db:migrate:prod       # apply them
+npm run user:create:prod      # add an account
+npm run user:password:prod    # change one
+```
+
+They used to be one file. Development ran against the live database, so
+`npm run dev` wrote to the system brokers use — which is how test proposals ended
+up in the real list, and a mistaken script would have reached real client data
+just as easily.
+
+The consequence to expect: **running locally no longer shows real proposals.**
+That is the point. Create a local account with `npm run user:create` (it goes
+into PGlite and applies migrations first), and the fixture extractor supplies
+coverage without an API key.
+
+### What reading a proposal costs
+
+Every extraction records its token counts, and the review screen reports them per
+proposal. Money appears only when both rates are set:
+
+```bash
+railway variable set -s safeside-proposals \
+  ANTHROPIC_INPUT_COST_PER_MTOK=<from your invoice> \
+  ANTHROPIC_OUTPUT_COST_PER_MTOK=<from your invoice>
+```
+
+Left unset, token counts show without a dollar figure — deliberately. A price
+taken from a published rate nobody checked looks authoritative and is quietly
+wrong, and one rate without the other is worse than neither.
 
 ### Day to day
 

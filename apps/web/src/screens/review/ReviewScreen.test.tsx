@@ -53,6 +53,7 @@ function detail(over: Partial<ProposalDetail> = {}): ProposalDetail {
     created_at: '2026-09-19T10:00:00.000Z',
     updated_at: '2026-09-19T10:00:00.000Z',
     confirmed_at: null,
+    usage: { input_tokens: 0, output_tokens: 0, runs: 0, cost_usd: null },
     customer: {
       named_insured: field('Northgate Bakery LLC'),
       dba: field(null),

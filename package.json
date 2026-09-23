@@ -17,9 +17,13 @@
     "build": "npm run build --workspace=packages/shared && npm run build --workspace=apps/api && npm run build --workspace=apps/web",
     "typecheck": "tsc --noEmit",
     "test": "npm run test --workspaces --if-present",
-    "db:migrate": "node scripts/migrate.mjs",
-    "user:create": "node scripts/create-user.mjs",
-    "db:check": "node scripts/check-migrations.mjs"
+    "db:migrate": "node --env-file-if-exists=.env scripts/migrate.mjs",
+    "user:create": "node --env-file-if-exists=.env scripts/create-user.mjs",
+    "db:check": "node --env-file-if-exists=.env scripts/check-migrations.mjs",
+    "db:migrate:prod": "node --env-file=.env.production scripts/migrate.mjs",
+    "db:status:prod": "node --env-file=.env.production scripts/migrate.mjs --status",
+    "user:create:prod": "node --env-file=.env.production scripts/create-user.mjs",
+    "user:password:prod": "node --env-file=.env.production scripts/set-password.mjs"
   },
   "dependencies": {
     "@node-rs/argon2": "^2.2.1",

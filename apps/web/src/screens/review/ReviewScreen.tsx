@@ -91,6 +91,8 @@ export function ReviewScreen() {
 
       {detail.notes.length > 0 && <ExtractionNotes detail={detail} />}
 
+      <ReadingCost detail={detail} />
+
       <CarrierNames detail={detail} commit={commit} clientIdentity={clientIdentity} />
 
       <CustomerBlock detail={detail} commit={commit} clientIdentity={clientIdentity} />
@@ -137,6 +139,33 @@ export function ReviewScreen() {
         onGenerate={generate}
       />
     </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+
+/**
+ * What reading this proposal cost.
+ *
+ * One quiet line, because it is not the broker's problem on any normal day — but
+ * it was invisible until now, and the first sign the API account had run dry was
+ * a quote that would not read. A number here means somebody notices the trend
+ * before it becomes an outage.
+ *
+ * Money only appears when a price per token is configured. A figure derived from
+ * a rate nobody checked would look authoritative and be wrong.
+ */
+function ReadingCost({ detail }: { detail: ProposalDetail }) {
+  const { input_tokens: input, output_tokens: output, runs, cost_usd: cost } = detail.usage;
+  if (runs === 0) return null;
+
+  const total = (input + output).toLocaleString();
+  return (
+    <p className="text-xs text-slate-400">
+      Reading this proposal took {runs} extraction run{runs === 1 ? '' : 's'} and {total} tokens
+      {cost === null ? '' : ` — about ${cost < 0.01 ? 'less than $0.01' : `$${cost.toFixed(2)}`}`}.
+      {' '}Internal only; it never appears in the client document.
+    </p>
   );
 }
 

@@ -167,6 +167,20 @@ export interface ReviewRecommendation {
   body_override: string | null;
 }
 
+/**
+ * Token spend on one proposal.
+ *
+ * `cost_usd` is null when no price per token is configured — see
+ * ANTHROPIC_*_COST_PER_MTOK. Showing counts without money beats showing money
+ * derived from a rate nobody checked.
+ */
+export interface ExtractionUsage {
+  input_tokens: number;
+  output_tokens: number;
+  runs: number;
+  cost_usd: number | null;
+}
+
 export interface ProposalDetail {
   id: string;
   client_name: string;
@@ -188,6 +202,8 @@ export interface ProposalDetail {
   notes: Array<{ filename: string; note: string }>;
   /** Every carrier name seen. Feeds the leak guard; never leaves the tool. */
   carrier_names: string[];
+  /** What reading this proposal cost. Internal; never printed. */
+  usage: ExtractionUsage;
   totals: ProposalTotals;
   /** Empty means Generate is enabled. */
   blocking_reasons: string[];
