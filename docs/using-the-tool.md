@@ -23,9 +23,24 @@ terminal open — closing it stops the tool.
 
 ## Signing in
 
-Accounts are made by an admin. There is no self-registration and no "forgot
+Accounts are made by invitation. There is no self-registration and no "forgot
 password" link — if you are locked out, someone with access runs
 `node scripts/set-password.mjs` for you.
+
+## Inviting someone (admins)
+
+**Team** in the top right, then **Invite someone**: their name and email, and
+whether they should be an admin too. You get a link — copy it, or copy the
+ready-made message with the link in it — and send it however you like.
+
+They open it, choose their own password, and are signed straight in. Nobody else
+ever knows the password, and nothing secret goes through WhatsApp or email.
+
+- **The link works once** and **expires after 7 days.**
+- **It is shown only once**, right after you make it. Lost it? Invite the same
+  email again: that makes a new link and switches the old one off.
+- **Withdraw** cancels a link that hasn't been used yet.
+- Everyone sees only their own proposals, admins included.
 
 A wrong password says so and nothing else. It never hints whether the email
 exists.
@@ -159,7 +174,6 @@ never modified them.
 
 - One account. Everything belongs to whoever is signed in; there is no shared
   view and no second login until someone makes one.
-- No account management screen — adding a colleague is a script an admin runs.
-  You can change your own password from your name in the top right; you cannot
-  add, remove or disable anyone.
+- Admins can invite people from **Team**, but there is no screen yet to remove
+  or disable an account once it exists — that is still a database change.
 - The layout expects a desktop-width window.

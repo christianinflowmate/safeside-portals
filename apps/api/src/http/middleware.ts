@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
+import { InviteError } from '../auth/invites.ts';
 import { CarrierLeakError } from '@safeside/shared';
 import { NotFoundError } from '../db/scoped.ts';
 import { resolveSession, SESSION_COOKIE, type SessionUser } from '../auth/sessions.ts';
@@ -46,6 +47,23 @@ export function requireUser() {
 }
 
 /** Narrow an authenticated request without repeating the non-null assertion. */
+/**
+ * Admins only. Mounted after requireUser, so req.user is already set.
+ *
+ * is_admin was recorded on every account from the start and checked nowhere.
+ * Inviting people is the first thing that genuinely needs it: whoever can create
+ * invites decides who gets into a system holding client data.
+ */
+export function requireAdmin() {
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (!req.user?.is_admin) {
+      res.status(403).json({ error: 'Only an admin can do that.' });
+      return;
+    }
+    next();
+  };
+}
+
 export function currentUser(req: Request): SessionUser {
   if (!req.user) throw new Error('currentUser called on an unauthenticated request');
   return req.user;
@@ -77,6 +95,13 @@ export function errorHandler() {
     }
     if (err instanceof ValidationError) {
       res.status(400).json({ error: err.message, details: err.details });
+      return;
+    }
+    // A dead invite link is 410 Gone rather than 404: the link was real, it just
+    // no longer works, and the page can say why.
+    if (err instanceof InviteError) {
+      const status = { invalid: 404, expired: 410, used: 410, revoked: 410, exists: 409, bad_input: 400 }[err.code];
+      res.status(status).json({ error: err.message, code: err.code });
       return;
     }
     // Generation refused because the document named a carrier. 422 with the

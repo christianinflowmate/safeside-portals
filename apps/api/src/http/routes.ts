@@ -12,7 +12,8 @@ import { materializeProposal } from '../proposals/materialize.ts';
 import { whyRetryRefused } from '../proposals/retry.ts';
 import { enqueue } from '../jobs/queue.ts';
 import { uploadPath, documentPath, sha256, UPLOADS_BUCKET, DOCUMENTS_BUCKET } from '../storage/index.ts';
-import { handler, requireUser, currentUser, ValidationError, param } from './middleware.ts';
+import { handler, requireUser, requireAdmin, currentUser, ValidationError, param } from './middleware.ts';
+import { createInvite, lookupInvite, acceptInvite, listInvites, revokeInvite } from '../auth/invites.ts';
 import { buildDocumentModel } from '../documents/build-model.ts';
 import { renderProposalPdf } from '../documents/render.ts';
 import type { ProposalListItem, ProposalDisplayStatus, ScheduleKind } from '@safeside/shared';
@@ -152,7 +153,52 @@ export function createRouter(): Router {
 
   /* --- proposals -------------------------------------------------------- */
 
+  /* --- invitations: the two routes a not-yet-signed-in person uses ------ */
+
+  // What the set-password page shows: whose invite this is, or why it is dead.
+  r.get('/invites/:token', handler(async (req, res) => {
+    res.json(await lookupInvite(req.ctx.db, param(req, 'token')));
+  }));
+
+  // Choose a password, get an account, and be signed in — one step, so nobody
+  // has to type the password they have just chosen a second time.
+  r.post('/invites/:token/accept', handler(async (req, res) => {
+    const { userId } = await acceptInvite(req.ctx.db, param(req, 'token'), req.body?.password);
+    const { token, expiresAt } = await createSession(req.ctx.db, userId, {
+      userAgent: req.get('user-agent') ?? null,
+      ip: req.ip ?? null,
+    });
+    res.cookie(SESSION_COOKIE, token, cookieOptions(expiresAt));
+    res.status(201).json({ ok: true });
+  }));
+
   r.use(requireUser());
+
+  /* --- invitations: admin side ------------------------------------------- */
+
+  r.get('/admin/invites', requireAdmin(), handler(async (req, res) => {
+    res.json(await listInvites(req.ctx.db));
+  }));
+
+  /*
+   * Returns the token exactly once. Only its hash is stored, so this response is
+   * the one and only place the working link exists — the admin copies it and
+   * sends it. If it is lost, inviting again issues a new one and withdraws this.
+   */
+  r.post('/admin/invites', requireAdmin(), handler(async (req, res) => {
+    const { token, invite } = await createInvite(req.ctx.db, currentUser(req).id, {
+      email: req.body?.email,
+      displayName: req.body?.display_name,
+      isAdmin: req.body?.is_admin === true,
+    });
+    res.status(201).json({ token, invite });
+  }));
+
+  r.delete('/admin/invites/:id', requireAdmin(), handler(async (req, res) => {
+    const revoked = await revokeInvite(req.ctx.db, param(req, 'id'));
+    if (!revoked) throw new ValidationError(['That invite has already been used, withdrawn, or does not exist.']);
+    res.status(204).end();
+  }));
 
   r.get('/proposals', handler(async (req, res) => {
     const rows = await listOwnedProposals(req.ctx.db, currentUser(req).id);

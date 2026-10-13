@@ -1,5 +1,7 @@
 import type {
   ApiError,
+  CreatedInvite,
+  InviteSummary,
   ApiUser,
   ExtractionProgress,
   GeneratedDocument,
@@ -148,6 +150,27 @@ export const api = {
       body: { current_password: currentPassword, new_password: newPassword },
       silentOn401: true,
     }),
+
+  /* --- Invitations ------------------------------------------------------- */
+
+  /* The two a not-yet-signed-in person uses. */
+  lookupInvite: (token: string, signal?: AbortSignal) =>
+    request<{ email: string; display_name: string }>(`/api/invites/${encodeURIComponent(token)}`, { signal, silentOn401: true }),
+
+  acceptInvite: (token: string, password: string) =>
+    request<{ ok: true }>(`/api/invites/${encodeURIComponent(token)}/accept`, {
+      method: 'POST',
+      body: { password },
+      silentOn401: true,
+    }),
+
+  /* Admin only. */
+  listInvites: (signal?: AbortSignal) => request<InviteSummary[]>('/api/admin/invites', { signal }),
+
+  createInvite: (input: { email: string; display_name: string; is_admin: boolean }) =>
+    request<CreatedInvite>('/api/admin/invites', { method: 'POST', body: input }),
+
+  revokeInvite: (id: string) => request<void>(`/api/admin/invites/${id}`, { method: 'DELETE' }),
 
   /* --- Proposals --------------------------------------------------------- */
 

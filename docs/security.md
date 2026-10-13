@@ -36,6 +36,23 @@ must exclude the brokerage's own names, or every proposal fails its own check.
 That allowlist lives with the guard, not in the prompt — keeping the model
 over-inclusive is the safer failure direction.
 
+## Invitations
+
+New accounts come from single-use links, so no password is ever chosen by one
+person and sent to another. The rules live in `apps/api/src/auth/invites.ts` and
+are tested there:
+
+- Only the SHA-256 of the token is stored, as with sessions. The working link
+  exists once, in the response to the admin who made it.
+- Accepting locks the invite row inside a transaction — two clicks at once make
+  one account, not two.
+- Links expire after 7 days; inviting the same address again withdraws the
+  earlier link, so there is never more than one live door per address.
+- An address that already has an account cannot be invited. Otherwise an invite
+  would be a way to replace someone's password.
+- Creating invites requires `is_admin`, checked on the server. It is the first
+  thing that flag has ever gated.
+
 ## Secrets
 
 `.env` is gitignored and `.env.example` carries key names with no values. Keys are

@@ -271,3 +271,24 @@ export interface ApiError {
   /** Present on 400 validation failures. */
   details?: string[];
 }
+
+/* --- invitations ---------------------------------------------------------- */
+
+export type InviteStatus = 'pending' | 'used' | 'expired' | 'revoked';
+
+export interface InviteSummary {
+  id: string;
+  email: string;
+  display_name: string;
+  is_admin: boolean;
+  created_at: string;
+  expires_at: string;
+  used_at: string | null;
+  status: InviteStatus;
+}
+
+/** The token is returned exactly once, here. Only its hash is stored. */
+export interface CreatedInvite {
+  token: string;
+  invite: InviteSummary;
+}
