@@ -18,6 +18,18 @@ bills actual usage rather than reserved capacity. This app idles at a few hundre
 megabytes and spikes only while Chromium renders, which those two models price
 very differently.
 
+**Where it lives now:** the **Inflowmate** workspace, on the company's paid plan.
+It started on a personal trial and was moved in October 2026 by redeploying into
+the workspace and renaming the new service domain to the original one, so the URL
+never changed. A project transfer would have been simpler but needs admin rights
+on the destination workspace.
+
+**What it actually costs and uses**, measured rather than estimated: about **$1 a
+month**, almost all of it memory. It idles at ~112 MB; the first PDF after a
+restart lifts it to ~510 MB (Chromium loaded once) and further renders stay
+there. The ceiling on this plan is 1024 MB. Two renders at the same instant could
+approach it — the first thing to watch if several brokers start generating at once.
+
 ---
 
 ## Why one service and not two
