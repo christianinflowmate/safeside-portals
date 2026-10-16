@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Link, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext.tsx';
 import { Button } from '../components/ui/Button.tsx';
 import { Field, Input } from '../components/ui/Input.tsx';
@@ -99,6 +99,9 @@ export function LoginScreen() {
         <p className="mt-3 text-xs text-ink-muted">
           Accounts are created by an administrator. There is no self-registration or
           password reset — ask an admin if you are locked out.
+        </p>
+        <p className="mt-2 text-xs">
+          <Link to="/help" className="font-medium text-navy hover:underline">How to use this tool</Link>
         </p>
       </div>
     </div>

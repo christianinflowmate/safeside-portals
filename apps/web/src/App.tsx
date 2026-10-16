@@ -6,6 +6,7 @@ import { ProposalsListScreen } from './screens/ProposalsList.tsx';
 import { AccountScreen } from './screens/Account.tsx';
 import { TeamScreen } from './screens/Team.tsx';
 import { AcceptInviteScreen } from './screens/AcceptInvite.tsx';
+import { HelpScreen } from './screens/Help.tsx';
 import { UploadScreen } from './screens/Upload.tsx';
 import { AnalyzingScreen } from './screens/Analyzing.tsx';
 import { ReviewScreen } from './screens/review/ReviewScreen.tsx';
@@ -19,6 +20,8 @@ export function App() {
           <Route path="/login" element={<LoginScreen />} />
           {/* Public: the person following an invite has no account yet. */}
           <Route path="/invite/:token" element={<AcceptInviteScreen />} />
+          {/* Public, so it can be read from the sign-in screen. */}
+          <Route path="/help" element={<HelpScreen />} />
           <Route element={<RequireAuth />}>
             <Route element={<AppShell />}>
               <Route path="/" element={<ProposalsListScreen />} />

@@ -28,6 +28,9 @@ export function AppShell() {
             <span className="text-sm text-ink-muted">Proposals</span>
           </Link>
           <div className="flex items-center gap-3 text-xs text-ink-muted">
+            <Link to="/help" className="rounded px-1.5 py-0.5 hover:bg-panel hover:text-navy">
+              Help
+            </Link>
             {/* The server enforces this; hiding the link just keeps it out of the way. */}
             {user?.is_admin ? (
               <Link to="/team" className="rounded px-1.5 py-0.5 hover:bg-panel hover:text-navy">
